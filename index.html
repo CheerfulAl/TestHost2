@@ -59,6 +59,7 @@
 
   <script type="py">
 from pyscript import document
+from pyodide.ffi import create_proxy
 
 boardEl = document.getElementById("board")
 turnPill = document.getElementById("turnPill")
@@ -76,6 +77,9 @@ board = [None]*9
 current = "X"
 game_over = False
 
+# IMPORTANT: keep event handler proxies alive
+cell_proxies = []
+
 def check_winner(b):
     for a,c,d in wins:
         if b[a] and b[a] == b[c] == b[d]:
@@ -87,23 +91,6 @@ def is_draw(b):
 
 def set_state(text):
     statePill.textContent = text
-
-def render():
-    boardEl.innerHTML = ""
-    for i, value in enumerate(board):
-        btn = document.createElement("button")
-        btn.className = "cell"
-        btn.type = "button"
-        btn.textContent = value if value else ""
-        btn.disabled = game_over or (value is not None)
-
-        def handler(evt, idx=i):
-            move(idx)
-
-        btn.addEventListener("click", handler)
-        boardEl.appendChild(btn)
-
-    turnPill.textContent = f"Turn: {current}"
 
 def end_game(message):
     global game_over
@@ -120,14 +107,39 @@ def move(i):
 
     winner = check_winner(board)
     if winner:
-        return end_game(f"{winner} wins!")
+        end_game(f"{winner} wins!")
+        return
 
     if is_draw(board):
-        return end_game("Draw!")
+        end_game("Draw!")
+        return
 
     current = "O" if current == "X" else "X"
     set_state("Playing")
     render()
+
+def render():
+    global cell_proxies
+
+    # clear old handlers
+    cell_proxies = []
+    boardEl.innerHTML = ""
+
+    for i, value in enumerate(board):
+        btn = document.createElement("button")
+        btn.className = "cell"
+        btn.type = "button"
+        btn.textContent = value if value else ""
+        btn.disabled = game_over or (value is not None)
+
+        # create a stable JS proxy for the Python handler
+        proxy = create_proxy(lambda evt, idx=i: move(idx))
+        cell_proxies.append(proxy)
+        btn.addEventListener("click", proxy)
+
+        boardEl.appendChild(btn)
+
+    turnPill.textContent = f"Turn: {current}"
 
 def reset_board_keep_turn(evt=None):
     global board, game_over
@@ -144,8 +156,8 @@ def new_game(evt=None):
     set_state("Playing")
     render()
 
-resetBtn.addEventListener("click", reset_board_keep_turn)
-newGameBtn.addEventListener("click", new_game)
+resetBtn.addEventListener("click", create_proxy(reset_board_keep_turn))
+newGameBtn.addEventListener("click", create_proxy(new_game))
 
 set_state("Playing")
 render()
