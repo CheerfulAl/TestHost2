@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tic-Tac-Toe (Python)</title>
+
+  <!-- PyScript -->
+  <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+  <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { display:grid; place-items:center; min-height:100vh; margin:0; background:#0b1020; color:#e9ecf1; }
+    .card { width:min(420px, 92vw); background:#121a33; border:1px solid #243055; border-radius:16px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+    h1 { font-size:20px; margin:0 0 12px; }
+    .status { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; }
+    .pill { padding:6px 10px; border-radius:999px; background:#0f1630; border:1px solid #243055; font-size:13px; }
+    .board { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+    button.cell {
+      aspect-ratio: 1/1;
+      border-radius:14px;
+      border:1px solid #2b3a6a;
+      background:#0f1630;
+      color:#e9ecf1;
+      font-size: clamp(34px, 10vw, 56px);
+      cursor:pointer;
+    }
+    button.cell:hover { background:#121c3b; border-color:#3a52a2; }
+    button.cell[disabled] { cursor:not-allowed; opacity:.9; }
+    .actions { display:flex; gap:10px; margin-top:14px; }
+    .actions button {
+      flex:1; padding:10px 12px; border-radius:12px;
+      border:1px solid #2b3a6a; background:#17224a; color:#e9ecf1; cursor:pointer; font-weight:600;
+    }
+    .hint { margin-top: 10px; font-size: 13px; opacity: .8; line-height: 1.35; }
+    .disclaimer { margin-top:12px; font-size:12px; opacity:0.6; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Tic-Tac-Toe (Python logic)</h1>
+
+    <div class="status">
+      <div class="pill" id="turnPill">Turn: X</div>
+      <div class="pill" id="statePill">Loading…</div>
+    </div>
+
+    <div class="board" id="board"></div>
+
+    <div class="actions">
+      <button id="resetBtn" type="button">Reset</button>
+      <button id="newGameBtn" type="button">New Game</button>
+    </div>
+
+    <div class="hint">Click a square to place your mark. First to 3 in a row wins.</div>
+    <div class="disclaimer">A game made for testing purposes. Made by ChatGPT</div>
+  </div>
+
+  <script type="py">
+from pyscript import document
+
+boardEl = document.getElementById("board")
+turnPill = document.getElementById("turnPill")
+statePill = document.getElementById("statePill")
+resetBtn = document.getElementById("resetBtn")
+newGameBtn = document.getElementById("newGameBtn")
+
+wins = [
+    (0,1,2),(3,4,5),(6,7,8),
+    (0,3,6),(1,4,7),(2,5,8),
+    (0,4,8),(2,4,6),
+]
+
+board = [None]*9
+current = "X"
+game_over = False
+
+def check_winner(b):
+    for a,c,d in wins:
+        if b[a] and b[a] == b[c] == b[d]:
+            return b[a]
+    return None
+
+def is_draw(b):
+    return all(v is not None for v in b)
+
+def set_state(text):
+    statePill.textContent = text
+
+def render():
+    boardEl.innerHTML = ""
+    for i, value in enumerate(board):
+        btn = document.createElement("button")
+        btn.className = "cell"
+        btn.type = "button"
+        btn.textContent = value if value else ""
+        btn.disabled = game_over or (value is not None)
+
+        def handler(evt, idx=i):
+            move(idx)
+
+        btn.addEventListener("click", handler)
+        boardEl.appendChild(btn)
+
+    turnPill.textContent = f"Turn: {current}"
+
+def end_game(message):
+    global game_over
+    game_over = True
+    set_state(message)
+    render()
+
+def move(i):
+    global current
+    if game_over or board[i] is not None:
+        return
+
+    board[i] = current
+
+    winner = check_winner(board)
+    if winner:
+        return end_game(f"{winner} wins!")
+
+    if is_draw(board):
+        return end_game("Draw!")
+
+    current = "O" if current == "X" else "X"
+    set_state("Playing")
+    render()
+
+def reset_board_keep_turn(evt=None):
+    global board, game_over
+    board = [None]*9
+    game_over = False
+    set_state("Playing")
+    render()
+
+def new_game(evt=None):
+    global board, current, game_over
+    board = [None]*9
+    current = "X"
+    game_over = False
+    set_state("Playing")
+    render()
+
+resetBtn.addEventListener("click", reset_board_keep_turn)
+newGameBtn.addEventListener("click", new_game)
+
+set_state("Playing")
+render()
+  </script>
+</body>
+</html>
